@@ -1,6 +1,7 @@
 #include <iostream>
+#include "safehouse/db.h"
 
 int main() {
-    std::cout << "Hello World" << std::endl;
+    safehouse::db::DB db;
     return 0;
 }
