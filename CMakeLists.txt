@@ -11,6 +11,6 @@ FetchContent_Declare(
   
 FetchContent_MakeAvailable(spdlog)
 
-add_executable(safehouse-db src/main.cpp src/pager.cpp src/db.cpp)
+add_executable(safehouse-db src/main.cpp src/db.cpp src/table.cpp)
 target_link_libraries(safehouse-db PRIVATE spdlog::spdlog)
 target_include_directories(safehouse-db PRIVATE include)
