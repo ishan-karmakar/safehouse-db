@@ -1,32 +1,17 @@
 cmake_minimum_required(VERSION 3.10)
-set(CMAKE_CXX_STANDARD 20)
-project(SafehouseDB CXX)
+set(CMAKE_C_STANDARD 17)
+project(SafehouseDB C)
 
 include(FetchContent)
 FetchContent_Declare(
-  spdlog
-  GIT_REPOSITORY https://github.com/gabime/spdlog.git
-  GIT_TAG v1.x
+  stumpless
+  GIT_REPOSITORY https://github.com/goatshriek/stumpless
+  GIT_TAG latest
 )
 
-FetchContent_Declare(
-  json
-  GIT_REPOSITORY https://github.com/nlohmann/json
-  GIT_TAG develop
-)
+FetchContent_MakeAvailable(stumpless)
 
-FetchContent_Declare(
-  magic_enum
-  GIT_REPOSITORY https://github.com/Neargye/magic_enum
-  GIT_TAG master
-)
-  
-FetchContent_MakeAvailable(spdlog)
-FetchContent_MakeAvailable(json)
-FetchContent_MakeAvailable(magic_enum)
-
-add_executable(safehouse-db src/main.cpp src/db.cpp src/table.cpp)
-target_link_libraries(safehouse-db PRIVATE spdlog::spdlog)
-target_link_libraries(safehouse-db PRIVATE nlohmann_json::nlohmann_json)
-target_link_libraries(safehouse-db PRIVATE magic_enum::magic_enum)
+add_executable(safehouse-db src/main.c)
+target_link_libraries(safehouse-db PRIVATE stumpless)
+target_include_directories(safehouse-db PRIVATE ${stumpless_SOURCE_DIR}/include ${stumpless_BINARY_DIR}/include)
 target_include_directories(safehouse-db PRIVATE include)
