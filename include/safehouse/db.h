@@ -13,9 +13,6 @@ public:
     Table& get_table(std::string);
 
 private:
-    size_t get_num_tables();
-    void set_num_tables(size_t num_tables);
-
     std::fstream file;
 
     /// Tables that were loaded into memory

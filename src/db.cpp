@@ -4,7 +4,7 @@
 #include <spdlog/spdlog.h>
 using namespace safehouse::db;
 
-typedef char num_fields_t;
+typedef uint8_t num_fields_t;
 
 const std::string TABLES_NAME = "tables.db";
 
@@ -18,18 +18,18 @@ DB::DB() {
 
 void DB::create_table(std::string name, std::unordered_map<std::string, DataType> fields) {
     if (get_schema(name)) {
-        spdlog::warn("Table {} already exists", name);
+        spdlog::warn("Table '{}' already exists", name);
         return;
     }
     file.seekp(0, std::ios::end);
     num_fields_t num_fields = fields.size();
+    std::cout << "Number of fields: " << static_cast<int>(num_fields) << std::endl;
     file.write(reinterpret_cast<char*>(&num_fields), sizeof(num_fields));
     file.write(name.c_str(), name.size() + 1);
     for (const auto& field : fields) {
         file.write(field.first.c_str(), field.first.size() + 1);
         file.write(reinterpret_cast<const char*>(&field.second), sizeof(field.second));
     }
-    // set_num_tables(get_num_tables() + 1);
 }
 
 std::optional<std::unordered_map<std::string, DataType>> DB::get_schema(std::string name) {
@@ -37,8 +37,10 @@ std::optional<std::unordered_map<std::string, DataType>> DB::get_schema(std::str
     while (true) {
         num_fields_t num_fields;
         file.read(reinterpret_cast<char*>(&num_fields), sizeof(num_fields));
-        if (file.eof())
+        if (file.eof()) {
+            file.clear();
             return std::nullopt;
+        }
         std::string table_name;
         std::getline(file, table_name, '\0');
         if (table_name == name) {
@@ -66,15 +68,3 @@ Table& DB::get_table(std::string name) {
         tables.emplace(name, Table{name, *this});
     return tables.at(name);
 }
-
-// size_t DB::get_num_tables() {
-//     size_t num_tables;
-//     file.seekg(NUM_TABLES_OFFSET);
-//     file.read(reinterpret_cast<char*>(&num_tables), sizeof(num_tables));
-//     return num_tables;
-// }
-
-// void DB::set_num_tables(size_t num_tables) {
-//     file.seekp(NUM_TABLES_OFFSET);
-//     file.write(reinterpret_cast<char*>(&num_tables), sizeof(num_tables));
-// }

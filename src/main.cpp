@@ -8,6 +8,6 @@ int main() {
         {"name", safehouse::db::String},
         {"email", safehouse::db::String}
     });
-    // db.get_schema("users");
+    safehouse::db::Table& table = db.get_table("users");
     return 0;
 }
