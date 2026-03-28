@@ -1,5 +1,4 @@
 #include <stdlib.h>
-#include <stdint.h>
 #include <sys/types.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -40,7 +39,7 @@ typedef struct {
     Row row_to_insert;
 } Statement;
 
-const uint32_t TABLE_MAX_ROWS = ROWS_PER_PAGE * TABLE_MAX_PAGES;
+const size_t TABLE_MAX_ROWS = ROWS_PER_PAGE * TABLE_MAX_PAGES;
 
 ExecuteResult execute_insert(Statement *statement, Table *table) {
     if (table->num_rows >= TABLE_MAX_ROWS)
@@ -54,23 +53,24 @@ ExecuteResult execute_insert(Statement *statement, Table *table) {
 
 ExecuteResult execute_select(Statement *statement, Table *table) {
     Row row;
-    for (uint32_t i = 0; i < table->num_rows; i++) {
+    for (size_t i = 0; i < table->num_rows; i++) {
         row_deserialize(table_row_slot(table, i), &row);
         row_print(&row);
     }
     return EXECUTE_SUCCESS;
 }
 
-MetaCommandResult do_meta_command(InputBuffer *buffer) {
-    if (strcmp(buffer->buffer, ".exit") == 0)
+MetaCommandResult do_meta_command(InputBuffer *buffer, Table *table) {
+    if (strcmp(buffer->buffer, ".exit") == 0) {
+        db_close(table);
         exit(EXIT_SUCCESS);
-    else return META_COMMAND_UNRECOGNIZED_COMMAND;
+    } else return META_COMMAND_UNRECOGNIZED_COMMAND;
 }
 
 PrepareResult prepare_statement(InputBuffer *buffer, Statement *statement) {
     if (strncmp(buffer->buffer, "insert", 6) == 0) {
         statement->type = STATEMENT_INSERT;
-        int args_assigned = sscanf(buffer->buffer, "insert %d %s %s", &(statement->row_to_insert.id), statement->row_to_insert.username, statement->row_to_insert.email);
+        int args_assigned = sscanf(buffer->buffer, "insert %ld %s %s", &(statement->row_to_insert.id), statement->row_to_insert.username, statement->row_to_insert.email);
         if (args_assigned < 3)
             return PREPARE_SYNTAX_ERROR;
     } else if (strcmp(buffer->buffer, "select") == 0)
@@ -118,13 +118,18 @@ void close_input_buffer(InputBuffer *buffer) {
 int main(int argc, char *argv[]) {
     stumpless_open_stream_target("stdout", stdout);
     InputBuffer *input_buffer = new_input_buffer();
-    Table *table = table_create();
+    if (argc < 2) {
+        stump_c("Must supply a database filename.");
+        exit(EXIT_FAILURE);
+    }
+    char *filename = argv[1];
+    Table *table = db_open(filename);
     while (true) {
         print_prompt();
         read_input(input_buffer);
 
         if (input_buffer->buffer[0] == '.') {
-            switch (do_meta_command(input_buffer)) {
+            switch (do_meta_command(input_buffer, table)) {
                 case META_COMMAND_SUCCESS: continue;
                 case META_COMMAND_UNRECOGNIZED_COMMAND:
                     stump_w("Unrecognized command '%s'", input_buffer->buffer);

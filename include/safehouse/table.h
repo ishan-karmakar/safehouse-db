@@ -1,13 +1,14 @@
 #pragma once
-#include <stdint.h>
+#include <stddef.h>
+#include "safehouse/pager.h"
 
 #define TABLE_MAX_PAGES 100
 
 typedef struct {
-    uint32_t num_rows;
-    void *pages[TABLE_MAX_PAGES];
+    size_t num_rows;
+    Pager *pager;
 } Table;
 
-Table *table_create(void);
-void table_destroy(Table*);
-void *table_row_slot(Table *table, uint32_t row_num);
+Table *db_open(const char *filename);
+void db_close(Table*);
+void *table_row_slot(Table *table, size_t row_num);
