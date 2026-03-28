@@ -9,6 +9,15 @@ typedef struct {
     Pager *pager;
 } Table;
 
+typedef struct {
+    Table *table;
+    size_t row_num;
+    bool eof;
+} Cursor;
+
 Table *db_open(const char *filename);
 void db_close(Table*);
-void *table_row_slot(Table *table, size_t row_num);
+Cursor *table_start(Table *table);
+Cursor *table_end(Table *table);
+void *cursor_value(Cursor *cursor);
+void cursor_advance(Cursor *cursor);

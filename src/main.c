@@ -46,16 +46,20 @@ ExecuteResult execute_insert(Statement *statement, Table *table) {
         return EXECUTE_TABLE_FULL;
     
     Row *row_to_insert = &(statement->row_to_insert);
-    row_serialize(row_to_insert, table_row_slot(table, table->num_rows));
+    Cursor *cursor = table_end(table);
+    row_serialize(row_to_insert, cursor_value(cursor));
+    free(cursor);
     table->num_rows++;
     return EXECUTE_SUCCESS;
 }
 
 ExecuteResult execute_select(Statement *statement, Table *table) {
     Row row;
-    for (size_t i = 0; i < table->num_rows; i++) {
-        row_deserialize(table_row_slot(table, i), &row);
+    Cursor *cursor = table_start(table);
+    while (!cursor->eof) {
+        row_deserialize(cursor_value(cursor), &row);
         row_print(&row);
+        cursor_advance(cursor);
     }
     return EXECUTE_SUCCESS;
 }
