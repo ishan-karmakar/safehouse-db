@@ -11,7 +11,7 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(stumpless)
 
-add_executable(safehouse-db src/main.c)
+add_executable(safehouse-db src/main.c src/table.c src/row.c)
 target_link_libraries(safehouse-db PRIVATE stumpless)
 target_include_directories(safehouse-db PRIVATE ${stumpless_SOURCE_DIR}/include ${stumpless_BINARY_DIR}/include)
 target_include_directories(safehouse-db PRIVATE include)
