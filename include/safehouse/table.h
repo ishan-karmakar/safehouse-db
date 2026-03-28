@@ -5,13 +5,14 @@
 #define TABLE_MAX_PAGES 100
 
 typedef struct {
-    size_t num_rows;
     Pager *pager;
+    size_t root_page_num;
 } Table;
 
 typedef struct {
     Table *table;
-    size_t row_num;
+    size_t page_num;
+    size_t cell_num;
     bool eof;
 } Cursor;
 
@@ -21,3 +22,5 @@ Cursor *table_start(Table *table);
 Cursor *table_end(Table *table);
 void *cursor_value(Cursor *cursor);
 void cursor_advance(Cursor *cursor);
+
+void leaf_node_insert(Cursor *cursor, size_t key, Row *value);

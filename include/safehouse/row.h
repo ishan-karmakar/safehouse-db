@@ -1,5 +1,4 @@
 #pragma once
-#include "safehouse/pager.h"
 
 #define COLUMN_USERNAME_SIZE 32
 #define COLUMN_EMAIL_SIZE 255
@@ -20,8 +19,6 @@ static const size_t ID_OFFSET = 0;
 static const size_t USERNAME_OFFSET = ID_OFFSET + ID_SIZE;
 static const size_t EMAIL_OFFSET = USERNAME_OFFSET + USERNAME_SIZE;
 static const size_t ROW_SIZE = ID_SIZE + USERNAME_SIZE + EMAIL_SIZE;
-
-static const size_t ROWS_PER_PAGE = PAGE_SIZE / ROW_SIZE;
 
 void row_serialize(Row *source, void *destination);
 void row_deserialize(void *source, Row *destination);

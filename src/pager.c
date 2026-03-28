@@ -18,6 +18,12 @@ Pager *pager_open(const char *filename) {
     Pager *pager = malloc(sizeof(Pager));
     pager->fd = fd;
     pager->file_length = file_length;
+    pager->num_pages = file_length / PAGE_SIZE;
+
+    if (file_length % PAGE_SIZE != 0) {
+        stump_c("DB file is not a whole number of pages. Corrupt file.");
+        exit(EXIT_FAILURE);
+    }
 
     for (size_t i = 0; i < TABLE_MAX_PAGES; i++)
         pager->pages[i] = NULL;
@@ -44,11 +50,14 @@ void *pager_get(Pager *pager, size_t page_num) {
             }
             pager->pages[page_num] = page;
         }
+
+        if (page_num >= pager->num_pages)
+            pager->num_pages++;
     }
     return pager->pages[page_num];
 }
 
-void pager_flush(Pager *pager, size_t page_num, size_t size) {
+void pager_flush(Pager *pager, size_t page_num) {
     if (pager->pages[page_num] == NULL) {
         stump_c("Tried to flush null page");
         exit(EXIT_FAILURE);
@@ -60,7 +69,7 @@ void pager_flush(Pager *pager, size_t page_num, size_t size) {
         exit(EXIT_FAILURE);
     }
 
-    ssize_t bytes_written = write(pager->fd, pager->pages[page_num], size);
+    ssize_t bytes_written = write(pager->fd, pager->pages[page_num], PAGE_SIZE);
     if (bytes_written == -1) {
         stump_c("Error writing: %d", errno);
         exit(EXIT_FAILURE);

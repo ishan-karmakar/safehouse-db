@@ -1,8 +1,10 @@
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <stumpless.h>
 #include "safehouse/table.h"
 #include "safehouse/row.h"
+#include "safehouse/node.h"
 
 Table *db_open(const char *filename) {
     Pager *pager = pager_open(filename);
@@ -10,29 +12,22 @@ Table *db_open(const char *filename) {
 
     Table *table = malloc(sizeof(Table));
     table->pager = pager;
-    table->num_rows = num_rows;
+    table->root_page_num = 0;
+    if (pager->num_pages == 0) {
+        void *root_node = pager_get(pager, 0);
+        initialize_leaf_node(root_node);
+    }
     return table;
 }
 
 void db_close(Table *table) {
     Pager *pager = table->pager;
-    size_t num_full_pages = table->num_rows / ROWS_PER_PAGE;
-    for (size_t i = 0; i < num_full_pages; i++) {
+    for (size_t i = 0; i < pager->num_pages; i++) {
         if (pager->pages[i] = NULL)
             continue;
-        pager_flush(pager, i, PAGE_SIZE);
+        pager_flush(pager, i);
         free(pager->pages[i]);
         pager->pages[i] = NULL;
-    }
-
-    size_t num_additional_rows = table->num_rows % ROWS_PER_PAGE;
-    if (num_additional_rows > 0) {
-        size_t page_num = num_full_pages;
-        if (pager->pages[page_num] != NULL) {
-            pager_flush(pager, page_num, num_additional_rows * ROW_SIZE);
-            free(pager->pages[page_num]);
-            pager->pages[page_num] = NULL;
-        }
     }
 
     int result = close(pager->fd);
@@ -55,28 +50,49 @@ void db_close(Table *table) {
 Cursor *table_start(Table *table) {
     Cursor *cursor = malloc(sizeof(Cursor));
     cursor->table = table;
-    cursor->row_num = 0;
-    cursor->eof = (table->num_rows == 0);
+    cursor->page_num = table->root_page_num;
+    cursor->cell_num = 0;
+
+    void *root_node = pager_get(table->pager, table->root_page_num);
+    size_t num_cells = *leaf_node_num_cells(root_node);
+    cursor->eof = num_cells == 0;
     return cursor;
 }
 
 Cursor *table_end(Table *table) {
     Cursor *cursor = malloc(sizeof(Cursor));
     cursor->table = table;
-    cursor->row_num = table->num_rows;
+    void *root_node = pager_get(table->pager, table->root_page_num);
+    size_t num_cells = *leaf_node_num_cells(root_node);
+    cursor->cell_num = num_cells;
     cursor->eof = true;
     return cursor;
 }
 
 void *cursor_value(Cursor *cursor) {
-    size_t page_num = cursor->row_num / ROWS_PER_PAGE;
-    void *page = pager_get(cursor->table->pager, page_num);
-    size_t row_offset = cursor->row_num % ROWS_PER_PAGE;
-    size_t byte_offset = row_offset * ROW_SIZE;
-    return page + byte_offset;
+    void *page = pager_get(cursor->table->pager, cursor->page_num);
+    return leaf_node_value(cursor->page_num, cursor->cell_num);
 }
 
 void cursor_advance(Cursor *cursor) {
-    if (++cursor->row_num >= cursor->table->num_rows)
-        cursor->eof = true;
+    void *node = pager_get(cursor->table->pager, cursor->page_num);
+    cursor->eof = ++cursor->cell_num >= *leaf_node_num_cells(node);
+}
+
+void leaf_node_insert(Cursor *cursor, size_t key, Row *row) {
+    void *node = pager_get(cursor->table->pager, cursor->page_num);
+    size_t num_cells = *leaf_node_num_cells(node);
+    if (num_cells >= LEAF_NODE_MAX_CELLS) {
+        stump_c("Need to implement splitting a leaf node.");
+        exit(EXIT_FAILURE);
+    }
+
+    if (cursor->cell_num < num_cells) {
+        for (size_t i = num_cells; i > cursor->cell_num; i--)
+            memcpy(leaf_node_cell(node, i), leaf_node_cell(node, i - 1), LEAF_NODE_CELL_SIZE);
+    }
+
+    (*leaf_node_num_cells(node))++;
+    *leaf_node_key(node, cursor->cell_num) = key;
+    row_serialize(row, leaf_node_value(node, cursor->cell_num));
 }

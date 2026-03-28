@@ -6,6 +6,7 @@
 #include <stumpless.h>
 #include "safehouse/table.h"
 #include "safehouse/row.h"
+#include "safehouse/node.h"
 
 typedef enum {
     META_COMMAND_SUCCESS,
@@ -39,17 +40,34 @@ typedef struct {
     Row row_to_insert;
 } Statement;
 
-const size_t TABLE_MAX_ROWS = ROWS_PER_PAGE * TABLE_MAX_PAGES;
+void print_constants(void) {
+    printf("Constants:\n");
+    printf("ROW_SIZE: %ld\n", ROW_SIZE);
+    printf("COMMON_NODE_HEADER_SIZE: %ld\n", COMMON_NODE_HEADER_SIZE);
+    printf("LEAF_NODE_HEADER_SIZE: %ld\n", LEAF_NODE_HEADER_SIZE);
+    printf("LEAF_NODE_CELL_SIZE: %ld\n", LEAF_NODE_CELL_SIZE);
+    printf("LEAF_NODE_SPACE_FOR_CELLS: %d\n", LEAF_NODE_SPACE_FOR_CELLS);
+    printf("LEAF_NODE_MAX_CELLS: %d\n", LEAF_NODE_MAX_CELLS);
+}
+
+void print_leaf_node(void *node) {
+    size_t num_cells = *leaf_node_num_cells(node);
+    printf("leaf (size %d)\n", num_cells);
+    for (size_t i = 0; i < num_cells; i++) {
+        size_t key = *leaf_node_key(node, i);
+        printf("  - %d : %d\n", i, key);
+    }
+}
 
 ExecuteResult execute_insert(Statement *statement, Table *table) {
-    if (table->num_rows >= TABLE_MAX_ROWS)
+    void *node = pager_get(table->pager, table->root_page_num);
+    if (*leaf_node_num_cells(node) >= LEAF_NODE_MAX_CELLS)
         return EXECUTE_TABLE_FULL;
     
     Row *row_to_insert = &(statement->row_to_insert);
     Cursor *cursor = table_end(table);
-    row_serialize(row_to_insert, cursor_value(cursor));
+    leaf_node_insert(cursor, row_to_insert->id, row_to_insert);
     free(cursor);
-    table->num_rows++;
     return EXECUTE_SUCCESS;
 }
 
@@ -68,6 +86,13 @@ MetaCommandResult do_meta_command(InputBuffer *buffer, Table *table) {
     if (strcmp(buffer->buffer, ".exit") == 0) {
         db_close(table);
         exit(EXIT_SUCCESS);
+    } else if (strcmp(buffer->buffer, ".btree") == 0) {
+        printf("Tree:\n");
+        print_leaf_node(pager_get(table->pager, 0));
+        return META_COMMAND_SUCCESS;
+    } else if (strcmp(buffer->buffer, ".constants") == 0)  {
+        print_constants();
+        return META_COMMAND_SUCCESS;
     } else return META_COMMAND_UNRECOGNIZED_COMMAND;
 }
 
