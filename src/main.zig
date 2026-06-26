@@ -13,6 +13,9 @@ pub fn main(init: std.process.Init) !u8 {
     var stdout = std.Io.File.stdout().writer(init.io, &stdout_buf);
     var stdin = std.Io.File.stdin().reader(init.io, &stdin_buf);
 
+    const table = try std.heap.smp_allocator.create(Table);
+    table.* = .{};
+
     while (true) {
         try stdout.interface.print("> ", .{});
         try stdout.interface.flush();
@@ -34,7 +37,12 @@ pub fn main(init: std.process.Init) !u8 {
             continue;
         };
 
-        statement.execute();
-        log.info("Executed statement", .{});
+        statement.execute(table) catch |err| {
+            switch (err) {
+                error.TableFull => log.err("Table full", .{}),
+            }
+            continue;
+        };
+        log.info("Executed", .{});
     }
 }
